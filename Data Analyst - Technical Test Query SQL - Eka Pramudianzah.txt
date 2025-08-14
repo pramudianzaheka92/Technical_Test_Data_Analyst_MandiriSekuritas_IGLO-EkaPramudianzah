@@ -1,0 +1,528 @@
+/*
+1. Menampilkan data-data customer seperti customer id, umur, usia pensiun,
+bulan dan tahun kelahiran, jenis kelamin (gender) serta alamat (address) dari user yang memiliki
+usia produktif yakni usia saat ini berada di range 60 tahun kebawah
+dan usia customer TIDAK BOLEH MELEBIHI usia pensiun customer tersebut.
+
+Selain itu data customer yang ditampilkan harus memiliki
+jumlah total hutang (total debt) YANG MELEBIHI batasan kredit (credit limit) yang telah ditentukan
+serta mengurutkan data berdasarkan jumlah total hutang dari total tertinggi hingga terendah
+*/
+select
+  user.id as user_id,
+  user.current_age as user_current_age,
+  user.retirement_age as age_user_retirement,
+  user.birth_month as user_birth_month,
+  user.birth_year as user_birth_year,
+  user.gender as user_gender,
+  user.address as user_address,
+  sum(user.total_debt) as total_debt,
+  sum(card.credit_limit) as total_limit_credit,
+  sum(user.credit_score) as user_credit_score
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.cards_data` as card
+on
+  user.id = card.client_id
+where
+  user.current_age <= 60 and user.current_age <= user.retirement_age
+group by
+  user.id,
+  user.current_age,
+  user.retirement_age,
+  user.birth_month,
+  user.birth_year,
+  user.gender,
+  user.address,
+  user.credit_score
+having sum(user.total_debt) > sum(card.credit_limit)
+order by sum(user.total_debt) desc
+
+
+
+/*
+2. Menampilkan data-data customer seperti customer id, umur, usia pensiun,
+bulan dan tahun kelahiran, jenis kelamin (gender) serta alamat (address) dari user yang memiliki
+usia produktif yakni usia saat ini berada di range 60 tahun kebawah
+dan usia customer TIDAK BOLEH MELEBIHI usia pensiun customer tersebut.
+
+Selain itu data customer yang ditampilkan harus memiliki
+jumlah total hutang (total debt) YANG TIDAK MELEBIHI batasan kredit (credit limit) yang telah ditentukan
+serta mengurutkan data berdasarkan jumlah skor kredit dari setiap
+masing-masing customer dari skor kredit terendah hingga tertinggi (ASCENDING)
+*/
+select
+  user.id as user_id,
+  user.current_age as user_current_age,
+  user.retirement_age as age_user_retirement,
+  user.birth_month as user_birth_month,
+  user.birth_year as user_birth_year,
+  user.gender as user_gender,
+  user.address as user_address,
+  sum(user.total_debt) as total_debt,
+  sum(card.credit_limit) as total_limit_credit,
+  sum(user.credit_score) as user_credit_score
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.cards_data` as card
+on
+  user.id = card.client_id
+where
+  user.current_age <= 60 and user.current_age <= user.retirement_age
+group by
+  user.id,
+  user.current_age,
+  user.retirement_age,
+  user.birth_month,
+  user.birth_year,
+  user.gender,
+  user.address,
+  user.credit_score
+having sum(user.total_debt) < sum(card.credit_limit)
+order by user.credit_score asc
+
+
+
+/*
+3. Menghitung jumlah total penggunaan merk kartu kredit (card_brand) & total limit/batasan pinjaman
+yang dapat diberikan oleh setiap masing-masing jenis/tipe kartu yang paling sering digunakan oleh user
+dalam bertransaksi serta mengurutkan jumlah total penggunaan secara DESCENDING
+*/
+select
+  distinct card_brand,
+  card_type,
+  count(*) as count_of_card_uses,
+  sum(credit_limit) as total_credit_limit
+from
+  `rosy-slate-420204.user_behavior_data.cards_data`
+group by card_brand, card_type
+order by count_of_card_uses desc
+
+
+
+/*
+4. Menampilkan sekaligus membandingkan antara jumlah total nilai terhadap
+kepemilikan kartu kredit yang tersimpan di dalam kolom "num_credit_cards"
+dari table data yaitu "user_data_table" di mana kepemilikan kartu kredit
+dibedakan berdasarkan 2 kondisi yakni user yang memiliki LEBIH DARI 1 kartu kredit
+dan user yang HANYA MEMILIKI 1 kartu kredit
+*/
+with detail_user_data_summary_for_credit_card as(
+  select
+    sum(
+      case
+        when num_credit_cards > 1 then 1
+        else 0
+      end
+    ) as total_user_with_have_more_than_1_credit_cards,
+    sum(
+      case
+        when num_credit_cards = 1 then 1
+        else 0
+        end
+    ) as total_user_with_have_only_1_credit_card
+  from
+    `rosy-slate-420204.user_behavior_data.user_data_table`
+)
+
+select
+  *
+from
+  detail_user_data_summary_for_credit_card
+
+
+
+/*
+5. Menampilkan detail data user yang memiliki LEBIH DARI 1 KARTU KREDIT
+serta diurutkan berdasarkan ID user dan nama merk kartu kredit secara ASCENDING
+dan tahun + bulan pembuatan/pembukaan akun kartu kredit untuk pertama kalinya (kolom data "acct_open_date") diurutkan secara DESCENDING
+*/
+select
+  user.id as user_id,
+  card.card_brand,
+  card.card_number as user_card_number,
+  card.card_type,
+  user.total_debt as total_debt,
+  card.acct_open_date as start_date_of_account_user,
+  card.expires as end_of_expired_date_account_user,
+  card.credit_limit,
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.cards_data` as card
+on user.id = card.client_id
+where user.num_credit_cards > 1
+order by
+  user.id asc,
+  card.card_brand asc,
+  card.acct_open_date desc
+
+
+
+/*
+6. Menampilkan data-data user seperti ID user (kolom data "id") dan umur user saat ini (kolom data "current_age")
+serta tanggal pembuatan/pembukaan akun kartu kredit untuk pertama kalinya (kolom data "acct_open_date")
+dan tanggal berakhirnya akun kartu kredit dari masing-masing user (kolom data "expires")
+dengan kondisi yaitu tahun pembuatan akun kartu kredit harus (acct_open_date) diatas tahun 2015 (2016, 2017, 2018, dst)
+dan tahun berakhirnya akun kartu kredit (expires) harus diatas tahun 2020 (2021, 2022, 2023, dst)
+serta kondisi lainnya yaitu hanya menampilkan umur user produktif yang berada di range dari umur 23 - 60 tahun
+*/
+select
+  user.id as user_id,
+  user.current_age as user_current_age,
+  card.acct_open_date as start_date_of_account_user,
+  card.expires as end_of_expired_date_account_user
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.cards_data` as card
+on user.id = card.client_id
+where
+  extract(
+    year from parse_date(
+      "%m/%Y", card.acct_open_date
+    )
+  ) > 2015 and
+  extract(
+    year from parse_date(
+      "%m/%Y", card.expires
+    )
+  ) > 2020 and
+  user.current_age <= 60 and user.current_age >= 23
+
+
+
+/*
+7. Menampilkan 25 jumlah transaksi yang telah dilakukan oleh 25 user selama tahun 2019
+serta diurutkan berdasarkan jumlah transaksi terbesar hingga terkecil (DESCENDING)
+*/
+select
+  user.id as user_id,
+  count(transaction_2019.id) as count_of_user_transaction
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.transaction_data_in_2019` as transaction_2019
+on user.id = transaction_2019.client_id
+group by user.id
+order by count(transaction_2019.id) desc
+limit 25
+
+
+
+/*
+8. Menampilkan jenis tempat transaksi berupa kota (kolom data "merchant_city")
+beserta data alamat dari kota tersebut (kolom data "address") yang memiliki
+jumlah total transaksi MELEBIHI NILAI 1.500 untuk melihat kota yang paling
+sering dijadikan tempat bertransaksi selama tahun 2019 beserta total nilai
+yang didapatkan dari kolom "amount" pada table dataset "transaction_data_in_2019"
+*/
+select
+  distinct transaction_2019.merchant_city,
+  user.address as address_of_transaction,
+  count(
+    distinct transaction_2019.id
+  ) as unique_count_of_transaction,
+  round(
+    sum(
+      transaction_2019.amount
+    ), 2
+  ) as sum_of_total_transaction_amount
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.transaction_data_in_2019` as transaction_2019
+on
+  user.id = transaction_2019.client_id
+group by
+  transaction_2019.merchant_city,
+  user.address
+having
+  count(distinct transaction_2019.id) > 1500
+order by
+  unique_count_of_transaction desc
+
+
+
+/*
+9. Menampilkan daftar ID user beserta jenis kelamin (kolom data "gender")
+dan umur user saat ini (kolom data "current_age") berdasarkan 2 kondisi:
+
+Kondisi pertama adalah user-user yang memiliki data umur LEBIH KECIL/SAMA DENGAN nilai rata-rata
+umur secara keseluruhan yang dijumlahkan dari kolom "current_age" pada table data "user_data_table"
+
+Sedangkan kondisi kedua adalah di mana user memiliki jumlah total nilai transaksi
+selama tahun 2019 yang LEBIH BESAR/SAMA DENGAN dari nilai rata-rata dari kolom "amount"
+yang tersimpan di dalam table data "transaction_data_in_2019"
+
+Selain itu, kedua kondisi tersebut akan dikelompokkan berdasarkan kolom-kolom seperti "id", "gender" dan "current_age"
+dan hasilnya akan diurutkan berdasarkan ID user dari ID terkecil hingga ID terbesar (ASCENDING)
+*/
+select
+  user.id as user_id,
+  user.gender as user_gender,
+  user.current_age as user_current_age,
+  round(
+    avg(
+      transaction_2019.amount
+    ), 2
+  ) as total_amount_of_user_transaction_2019
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.transaction_data_in_2019` as transaction_2019
+on
+  user.id = transaction_2019.client_id
+where
+  user.current_age <= (
+    select
+      round(
+        avg(current_age)
+      )
+    from
+      `rosy-slate-420204.user_behavior_data.user_data_table`
+  )
+group by
+  user.id,
+  user.gender,
+  user.current_age
+having sum(transaction_2019.amount) >= (
+  select
+    round(
+      avg(amount), 2
+    ) as total_amount_of_user_transaction
+  from
+    `rosy-slate-420204.user_behavior_data.transaction_data_in_2019`
+)
+order by user.id asc
+
+
+
+/*
+10. Menampilkan jenis-jenis merk kartu kredit yang memiliki
+jumlah total limit kredit dari TERKECIL hingga TERBESAR
+serta banyaknya penggunaan dari setiap masing-masing brand kartu kredit
+*/
+select
+  distinct card_brand,
+  round(
+    sum(credit_limit)
+  ) as total_credit_limit,
+  count(*) as count_of_card_uses
+from
+  `rosy-slate-420204.user_behavior_data.cards_data`
+group by card_brand
+order by total_credit_limit
+
+
+
+/*
+11. Menampilkan sekaligus mengkalkulasikan jumlah total nilai debit (kolom data "total_debt"),
+jumlah total nilai transaksi yang dilakukan (kolom data "amount") dan jumlah baris transaksi
+secara unik pada kolom "id" dari table dataset "transaction_data_in_2019" berdasarkan masing-masing
+bulan transaksi yang tersimpan di dalam kolom "date" dari table dataset "transaction_data_in_2019"
+dengan tujuan agar dapat menganalisis trend debit, jumlah transaksi dan total nilai transaksi selama 1 bulan di tahun 2019
+*/
+with adding_month_name_column_in_data_transaction as(
+  select
+    *,
+    format_date("%m", date) as month_no,
+    format_date("%B", date) as month_name
+  from
+    `rosy-slate-420204.user_behavior_data.transaction_data_in_2019`
+),
+
+sum_of_total_value_based_on_month as (
+  select
+    new_format_transaction.month_name,
+    round(
+      sum(user.total_debt), 2
+    ) as total_debt,
+    round(
+      sum(new_format_transaction.amount), 2
+    ) as total_amount_of_transaction,
+    count(
+      distinct new_format_transaction.id
+    ) as number_of_transaction
+  from
+    `rosy-slate-420204.user_behavior_data.user_data_table` as user
+  left join
+    adding_month_name_column_in_data_transaction as new_format_transaction
+  on
+    user.id = new_format_transaction.client_id
+  where
+    new_format_transaction.month_name is not null
+  group by
+    new_format_transaction.month_no,
+    new_format_transaction.month_name
+  order by
+    new_format_transaction.month_no asc
+)
+
+select
+  *
+from
+  sum_of_total_value_based_on_month
+
+
+
+/*
+12. Menampilkan sekaligus mengkalkulasikan ada berapa banyak jumlah transaksi
+yang dilakukan oleh setiap masing-masing jenis/tipe merk kartu kredit selama tahun 2019
+*/
+with adding_month_name_column_in_data_transaction as(
+  select
+    *,
+    format_date("%m", date) as month_no,
+    format_date("%B", date) as month_name
+  from
+    `rosy-slate-420204.user_behavior_data.transaction_data_in_2019`
+),
+
+sum_of_total_value_based_on_month_transaction_per_card_brand as (
+  select
+    new_format_transaction.month_name,
+    card.card_brand,
+    count(
+      distinct new_format_transaction.id
+    ) as number_of_transaction
+  from
+    adding_month_name_column_in_data_transaction as new_format_transaction
+  left join
+    `rosy-slate-420204.user_behavior_data.cards_data` as card
+  on
+    new_format_transaction.card_id = card.id
+  group by
+    new_format_transaction.month_no,
+    new_format_transaction.month_name,
+    card.card_brand
+  order by
+    new_format_transaction.month_no asc,
+    number_of_transaction desc
+)
+
+select
+  *
+from
+  sum_of_total_value_based_on_month_transaction_per_card_brand
+
+
+
+/*
+13. Menampilkan ID user (kolom data "id") yang tersimpan di dalam table dataset "user_data_table"
+beserta jenis/tipe merk kartu kredit (kolom data "card_brand") yang dimiliki oleh user tersebut
+dengan kondisi yaitu HANYA USER YANG MEMILIKI LEBIH DARI 1 JENIS/TIPE KARTU KREDIT yang akan ditampilkan
+serta JUMLAH PERUBAHAN KODE PIN ATAS KARTU DEBIT/KREDIT yang dimiliki oleh user harus LEBIH DARI 1X perubahan kode pin
+*/
+select
+  user.id as user_id,
+  card.card_brand as user_card_brand_owned,
+  card.card_type,
+  count(card.year_pin_last_changed) as count_of_total_year_pin_last_changed
+from
+  `rosy-slate-420204.user_behavior_data.user_data_table` as user
+left join
+  `rosy-slate-420204.user_behavior_data.cards_data` as card
+on
+  user.id = card.client_id
+where user.num_credit_cards > 1 -- Sebuah kondisi di mana data user yang ditampilkan adalah user YANG MEMILIKI LEBIH DARI 1 KARTU KREDIT
+group by
+  user.id,
+  card.card_brand,
+  card.card_type
+having
+  count(card.year_pin_last_changed) > 1 -- Kondisi kedua yang bersifat agregasi data di mana query pada bagian ini mengartikan jika hanya user yang telah mengubah kode pin pada kartu debit.kredit sebanyak LEBIH DARI 1X
+
+
+
+/*
+14. Menampilkan 10 user beserta profile user seperti jenis kelamin user (kolom data "gender"),
+usia user saat ini (kolom data "current_age"), dan alamat tempat tinggal user (kolom data "address")
+yang memiliki nilai skor kredit terendah beserta jumlah utang/nilai debit (kolom data "total_debt")
+dengan limit batasan kredit dari setiap kesepuluh user tersebut agar mendapatkan list 10 user
+dengan reputasi buruk dalam mengelola utang beserta nilai selisih antara total limit kredit
+yang dimiliki oleh setiap masing-masing user dengan total debt/total utang user
+*/
+select
+  user.id as user_id,
+  user.gender as user_gender,
+  user.current_age as user_current_age,
+  user.address as user_address,
+  user.credit_score as user_credit_score,
+  user.total_debt,
+  round(
+    sum(card.credit_limit)
+  ) as total_credit_limit,
+  round(
+    sum(card.credit_limit)
+  ) - round(
+    sum(user.total_debt)
+  ) as difference_between_credit_limit_and_total_debt
+from
+  rosy-slate-420204.user_behavior_data.user_data_table as user
+left join
+  rosy-slate-420204.user_behavior_data.cards_data as card
+on
+  user.id = card.client_id
+group by
+  user.id,
+  user.gender,
+  user.current_age,
+  user.address,
+  user.credit_score,
+  user.total_debt
+order by
+  user.credit_score asc
+limit 10
+
+
+
+/*
+15. Menampilkan 10 user beserta profile user seperti jenis kelamin user (kolom data "gender"),
+usia user saat ini (kolom data "current_age"), dan alamat tempat tinggal user (kolom data "address")
+yang memiliki nilai skor kredit paling tinggi beserta jumlah utang/nilai debit (kolom data "total_debt")
+dengan limit batasan kredit dan penghasilan tahunan dari setiap kesepuluh user tersebut agar mendapatkan list 10 user
+dengan reputasi baik dalam mengelola utang beserta nilai selisih antara total limit kredit
+yang dimiliki oleh setiap masing-masing user dengan total debt/total utang user
+serta nilai selisih antara penghasilan tahunan user dengan total beban (jumlah hutang) setiap masing-masing user
+*/
+select
+  user.id as user_id,
+  user.gender as user_gender,
+  user.current_age as user_current_age,
+  user.address as user_address,
+  user.credit_score as user_credit_score,
+  user.total_debt,
+  round(
+    sum(card.credit_limit)
+  ) as total_credit_limit,
+  round(
+    sum(card.credit_limit)
+  ) - round(
+    sum(user.total_debt)
+  ) as difference_between_credit_limit_and_total_debt,
+  user.yearly_income,
+  round(
+    sum(user.yearly_income)
+  ) - round(
+    sum(user.total_debt)
+  ) as difference_between_yearly_income_and_total_debt
+from
+  rosy-slate-420204.user_behavior_data.user_data_table as user
+left join
+  rosy-slate-420204.user_behavior_data.cards_data as card
+on
+  user.id = card.client_id
+group by
+  user.id,
+  user.gender,
+  user.current_age,
+  user.address,
+  user.credit_score,
+  user.total_debt,
+  user.yearly_income
+order by
+  user.credit_score desc
+limit 10
